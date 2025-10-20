@@ -1,0 +1,41 @@
+default_agent: WebsiteGuidingAgent
+agents:
+  WebsiteGuidingAgent:
+    name: WebsiteGuidingAgent
+    entrypoint: C:/Users/PratikTalaviya/Crest-Projects/WebsiteGuidingAgent/WebsiteGuidingAgent/WebsiteGuidingAgent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: C:\Users\PratikTalaviya\Crest-Projects\WebsiteGuidingAgent\WebsiteGuidingAgent
+    aws:
+      execution_role: arn:aws:iam::183614028681:role/AmazonBedrockAgentCoreSDKRuntime-us-east-1-357ec89c11
+      execution_role_auto_create: false
+      account: '183614028681'
+      region: us-east-1
+      ecr_repository: 183614028681.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-websiteguidingagent
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: null
+      agent_arn: null
+      agent_session_id: null
+    codebuild:
+      project_name: null
+      execution_role: null
+      source_bucket: null
+    memory:
+      mode: STM_ONLY
+      memory_id: WebsiteGuidingAgent_mem-hQD7RfGu1u
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:183614028681:memory/WebsiteGuidingAgent_mem-hQD7RfGu1u
+      memory_name: WebsiteGuidingAgent_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
