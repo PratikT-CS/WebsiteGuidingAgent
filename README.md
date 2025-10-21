@@ -1,4 +1,4 @@
-## Website Guiding Agent (Monorepo)
+## Website Guiding Agent 
 
 This repository provides a sample end-to-end setup for a Website Guiding Agent, including a demo frontend, serverless backend, and a simple Python-based agent.
 
