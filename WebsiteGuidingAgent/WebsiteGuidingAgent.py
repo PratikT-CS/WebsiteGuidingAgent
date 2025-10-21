@@ -140,7 +140,7 @@ agent = Agent(
 
 **CRITICAL FOR STS ENVIRONMENT:**
 - Keep responses under 2-3 sentences maximum
-- Try keeping responses short and sweet, but still informative according to the user's question.
+- Be engaging and to-the-point - answer exactly what the user is asking
 - Use simple, conversational language that flows naturally when spoken
 - Avoid complex technical jargon or lengthy explanations
 - Focus on the most essential information only
@@ -161,9 +161,19 @@ agent = Agent(
 - Help users understand the purpose and benefits of different sections
 
 **CLICKING AND FILLING INPUT GUIDE:**
-- If asked to click a button or fill an input field, use the `click_element` and `fill_input` tools respectively.'
-- But don't directly use this tools first navigate to appropriate page, appropriate section and then use the tools.
-- To make user see visually, what is filled in the input filled or which button is clicked. 
+- **CRITICAL VISUAL FEEDBACK PROCESS**: When asked to click a button or fill an input field, follow this exact sequence:
+  1. **First**: ONLY navigate using `navigate_to_page(path)` if the user is NOT already on the correct page
+  2. **Second**: Always scroll to the relevant section using `scroll_to_section(selector_id)` to ensure the user can see the element
+  3. **Third**: Only then use `click_element(selector)` or `fill_input(selector, text)` tools
+- **IMPORTANT**: If user is already on the contact page and asks to fill the contact form, DO NOT navigate again - just scroll to contact-form section and fill
+- **IMPORTANT**: If user is already on the contact page and asks to submit, DO NOT navigate again - just scroll to contact-form section and click submit
+- This ensures the user can visually see what's happening and where the action is taking place
+- Never perform input filling or button clicking without first navigating (if needed) and scrolling to make the element visible
+
+**PAUSE AND WAIT HANDLING:**
+- When users ask to wait, pause, or request time-related breaks (e.g., "wait", "give me a moment", "pause", "hold on"), use the `pause_call()` tool
+- This allows users to take breaks or handle other tasks while maintaining the conversation context
+- Always acknowledge the pause request before using the tool 
 
 ### Tools Available
 1. **navigate_to_page(path)** → Move to a specific page
@@ -366,10 +376,14 @@ Only use these when navigating.
 - IMPORTANT: Do not output tool calls as text. Execute them directly using the available tools.
 
 ### Guide-Specific Responses
-- **For form-filling requests**: "If asked to fill input first navigate to appropriate page, appropriate section and then use the tools."
-- **For clicking/interaction requests**: "If asked to click button first navigate to appropriate page, appropriate section and then use the tools."
+- **For form-filling requests**: Follow the 3-step process: 1) Navigate ONLY if not on correct page, 2) Scroll to section, 3) Fill input - this ensures user sees the visual feedback
+- **For clicking/interaction requests**: Follow the 3-step process: 1) Navigate ONLY if not on correct page, 2) Scroll to section, 3) Click element - this ensures user sees the visual feedback
+- **For contact form specifically**: If already on contact page, skip navigation and go directly to scroll + action
+- **For pause/wait requests**: When users ask to wait, pause, or need time, use `pause_call()` tool to pause the conversation
 - **For general guidance**: Provide comprehensive explanations about features, their benefits, and how they work
 - **For navigation**: Always combine explanations with actual navigation to relevant pages
+- **Visual Feedback Priority**: User must be able to see what's happening - never perform actions in hidden or off-screen elements
+- **Response Style**: Be engaging, to-the-point, and answer exactly what the user is asking
 """,
         tools=[navigate_to_page, scroll_to_section, fill_input, click_element, end_call, pause_call]
     )

@@ -72,7 +72,7 @@ const createToolRegistry = (
     });
 
     el.dispatchEvent(customEvent);
-
+    setTimeout(() => {}, 1000);
     return `Filled input ${selector} with value '${value}'`;
   },
 
@@ -155,6 +155,7 @@ const createToolRegistry = (
       // Use a longer delay to ensure state updates are processed
       await new Promise((resolve) => setTimeout(resolve, 100));
       conversationControls.pauseConversation();
+      setConversationMode("paused");
       return "Call paused successfully";
     } else {
       return "Error: Pause function not available";
@@ -181,7 +182,7 @@ const Chatbot = () => {
   // WebSocket connection state
   const [wsConnection, setWsConnection] = useState(null);
   const wsConnectionRef = useRef(null);
-  const [clientId] = useState(
+  const [clientId, setClientId] = useState(
     () => `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   );
 
@@ -215,6 +216,50 @@ const Chatbot = () => {
   // Memory management state
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [conversationHistory, setConversationHistory] = useState([]);
+
+  // Auto-restart WebSocket connection state
+  const [messageCount, setMessageCount] = useState(0);
+  const messageCountRef = useRef(0);
+  const restartTimeoutRef = useRef(null);
+
+  // Function to restart WebSocket connection with new clientId
+  const restartWebSocketConnection = useCallback(() => {
+    // Close existing connection
+    if (wsConnectionRef.current) {
+      wsConnectionRef.current.close();
+      wsConnectionRef.current = null;
+    }
+
+    // Clear any existing restart timeout
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+
+    // Generate new clientId
+    const newClientId = `client_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
+    // Update the clientId (this will trigger useEffect to reconnect)
+    setClientId(newClientId);
+
+    // Reset message count
+    setMessageCount(0);
+    messageCountRef.current = 0;
+  }, []);
+
+  // Function to increment message count and check for restart
+  const incrementMessageCount = useCallback(() => {
+    const newCount = messageCountRef.current + 1;
+    messageCountRef.current = newCount;
+    setMessageCount(newCount);
+
+    // Restart connection after 10 messages
+    if (newCount >= 10) {
+      restartWebSocketConnection();
+    }
+  }, [restartWebSocketConnection]);
 
   // Speech API refs
   const recognitionRef = useRef(null);
@@ -269,9 +314,7 @@ const Chatbot = () => {
           },
         ]);
       }
-    } catch (error) {
-      console.error("Error clearing memory:", error);
-    }
+    } catch (error) {}
   };
 
   const getMemorySummary = async () => {
@@ -283,9 +326,7 @@ const Chatbot = () => {
         const data = await response.json();
         return data.summary;
       }
-    } catch (error) {
-      console.error("Error getting memory summary:", error);
-    }
+    } catch (error) {}
     return null;
   };
 
@@ -315,6 +356,10 @@ const Chatbot = () => {
       };
 
       setMessages((prev) => [...prev, userMessage]);
+
+      // Increment message count for auto-restart
+      incrementMessageCount();
+
       setIsTyping(true);
       setIsProcessing(true);
       const currentLocation = window.location.pathname;
@@ -360,7 +405,6 @@ const Chatbot = () => {
           }, 500);
         }
       } catch (error) {
-        console.error("Error calling agent API:", error);
         setIsConnected(false);
 
         // Speak error message
@@ -386,7 +430,7 @@ const Chatbot = () => {
         isProcessingTranscriptRef.current = false;
       }
     },
-    [messages.length, clientId, autoSpeak, hasWelcomed]
+    [messages.length, clientId, autoSpeak, hasWelcomed, incrementMessageCount]
   );
 
   // Store the function in a ref so it can be called from event handlers
@@ -460,9 +504,7 @@ const Chatbot = () => {
               recognitionRef.current.start();
               // State will be set by onstart handler
             }
-          } catch (error) {
-            console.error("Error starting recognition after stop:", error);
-          }
+          } catch (error) {}
         }, 300);
         return true;
       } else {
@@ -472,7 +514,6 @@ const Chatbot = () => {
         return true;
       }
     } catch (error) {
-      console.error("Error starting speech recognition:", error);
       return false;
     }
   }, [speechSupported, conversationMode]);
@@ -549,9 +590,7 @@ const Chatbot = () => {
             setIsListening(true);
             isListeningRef.current = true;
             setVoiceState("listening");
-          } catch (error) {
-            console.error("🔧 Error starting speech recognition:", error);
-          }
+          } catch (error) {}
         } else {
         }
       }, 100);
@@ -721,7 +760,6 @@ const Chatbot = () => {
       };
 
       utterance.onerror = (event) => {
-        console.error("🔊 Speech synthesis error:", event.error);
         setIsSpeaking(false);
         isSpeakingRef.current = false;
         setVoiceState("idle");
@@ -865,7 +903,6 @@ const Chatbot = () => {
       };
 
       utterance.onerror = (event) => {
-        console.error("🔊 Welcome message error:", event.error);
         setIsSpeaking(false);
         isSpeakingRef.current = false;
         setVoiceState("idle");
@@ -1068,7 +1105,6 @@ const Chatbot = () => {
               errorMessage = `Speech recognition error: ${event.error}`;
           }
 
-          console.error("🎤 Speech recognition error:", event.error);
           setSpeechError(errorMessage);
 
           // For other errors, try to reconnect in continuous mode
@@ -1112,7 +1148,6 @@ const Chatbot = () => {
         // Load voices when they become available (some browsers load them asynchronously)
         SpeechSynthesis.addEventListener("voiceschanged", loadVoices);
       } else {
-        console.warn("⚠️ Speech APIs not supported in this browser");
         setSpeechSupported(false);
         setSpeechError(
           "Speech recognition and synthesis are not supported in this browser."
@@ -1150,7 +1185,6 @@ const Chatbot = () => {
         // Add a small delay between tool executions to ensure DOM updates
         await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (error) {
-        console.error(`❌ Tool ${toolCall.tool} failed:`, error);
         // Continue with next tool even if one fails
       }
     }
@@ -1185,9 +1219,6 @@ const Chatbot = () => {
       (wsConnectionRef.current &&
         wsConnectionRef.current.readyState === WebSocket.OPEN)
     ) {
-      console.log(
-        "WebSocket connection already exists or in progress, skipping..."
-      );
       return;
     }
 
@@ -1252,9 +1283,7 @@ const Chatbot = () => {
               tool: message.tool,
             });
           }
-        } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
-        }
+        } catch (error) {}
       };
 
       ws.onclose = (event) => {
@@ -1302,7 +1331,6 @@ const Chatbot = () => {
         isConnectingRef.current = false;
       };
     } catch (error) {
-      console.error("Failed to create WebSocket connection:", error);
       setIsConnected(false);
       isConnectingRef.current = false;
     }
@@ -1331,12 +1359,36 @@ const Chatbot = () => {
         clearTimeout(connectionTimeoutRef.current);
         connectionTimeoutRef.current = null;
       }
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
       if (wsConnectionRef.current) {
         wsConnectionRef.current.close();
         wsConnectionRef.current = null;
       }
     };
   }, [clientId]); // Only re-run when clientId changes
+
+  // Set up 10-minute interval restart
+  useEffect(() => {
+    // Clear any existing restart timeout
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+    }
+
+    // Set up 10-minute restart timer
+    restartTimeoutRef.current = setTimeout(() => {
+      restartWebSocketConnection();
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => {
+      if (restartTimeoutRef.current) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
+    };
+  }, [clientId, restartWebSocketConnection]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -1349,6 +1401,10 @@ const Chatbot = () => {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+
+    // Increment message count for auto-restart
+    incrementMessageCount();
+
     const currentInput = inputMessage;
     setInputMessage("");
     setCurrentTranscript(""); // Clear speech transcript when sending message
@@ -1400,7 +1456,6 @@ const Chatbot = () => {
         }, 500);
       }
     } catch (error) {
-      console.error("Error calling agent API:", error);
       setIsConnected(false);
 
       // Fallback to local response if API fails
@@ -1436,7 +1491,6 @@ const Chatbot = () => {
       const result = await toolRegistry[toolCall.tool](toolCall.args);
       return result;
     } catch (error) {
-      console.error(`❌ Error executing tool ${toolCall.tool}:`, error);
       throw error;
     }
   };
@@ -1470,7 +1524,6 @@ const Chatbot = () => {
       setIsListening(true);
       isListeningRef.current = true;
     } catch (error) {
-      console.error("Error starting speech recognition:", error);
       setSpeechError("Failed to start speech recognition");
     }
   };
@@ -1543,9 +1596,7 @@ const Chatbot = () => {
               recognitionRef.current.start();
             }
           }, 100);
-        } catch (error) {
-          console.warn("Error restarting speech recognition on focus:", error);
-        }
+        } catch (error) {}
       }
     };
 
@@ -1554,9 +1605,7 @@ const Chatbot = () => {
       if (isListeningRef.current && recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-        } catch (error) {
-          console.warn("Error stopping speech recognition on blur:", error);
-        }
+        } catch (error) {}
       }
     };
 

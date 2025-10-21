@@ -4,6 +4,10 @@ This repository provides a sample end-to-end setup for a Website Guiding Agent, 
 
 ![Architecture](Website%20Guiding%20Agent%20Architecture.jpeg)
 
+### Demo Video
+
+🎥 **[Watch the Demo Video](https://your-video-link-here.com)** - See the Website Guiding Agent in action with real-time user interactions and tool execution.
+
 ### Repository Structure
 
 - `sample_frontend/`: React + Vite sample site demonstrating integration with the agent via HTTP and WebSocket.
@@ -26,16 +30,61 @@ Refer to subproject READMEs for details:
 - Agent processes inputs and streams responses/events over the WebSocket channel.
 - Client-side tools (safe, browser-only actions) are executed in the frontend, while privileged server-side tools run in the backend. The WebSocket bridges agent decisions and tool outputs back to the client in real time.
 
-### Client-Side Tool Execution and Server Tool Bridge
+### Client-Side Tools vs Server-Side Tools
 
-- Client-side tool execution: The frontend can run safe, browser-scoped actions (e.g., UI guidance, DOM interactions, local storage reads) without backend access. These are triggered by agent messages delivered over WebSocket.
-- Server-side tools: Data access, third-party APIs, or actions requiring secrets/permissions execute within backend Lambdas under the agent's control.
-- WebSocket bridge: The agent streams tool prompts, intermediate statuses, and final results to the client over the WebSocket. The client renders guidance and may trigger additional client-side tools accordingly.
-- Message flow (typical):
-  1. User action → HTTPS request to Agent API.
-  2. Agent plans tools; runs server tools and emits steps/results over WebSocket.
-  3. Client receives events → performs client-side tool actions if requested → updates UI.
-  4. Final guidance/result is shown to the user.
+The Website Guiding Agent architecture distinguishes between two types of tools based on their execution environment and security requirements:
+
+#### Client-Side Tools
+
+**Definition**: Tools that execute directly in the user's browser without requiring server access or sensitive permissions.
+
+**Characteristics**:
+
+- Run in the frontend (React application)
+- Safe, browser-scoped actions only
+- No access to server resources or secrets
+- Examples: UI guidance, DOM interactions, local storage reads, form validation, navigation assistance
+
+**Execution Flow**:
+
+1. Agent sends tool request over WebSocket
+2. Frontend receives and executes the tool
+3. Results are sent back to agent via WebSocket
+4. Agent processes results and continues workflow
+
+#### Server-Side Tools
+
+**Definition**: Tools that require server access, API keys, database connections, or other privileged operations that cannot be safely executed in the browser.
+
+**Characteristics**:
+
+- Execute within backend Lambda functions
+- Access to server resources and secrets
+- Can perform data operations, API calls, file processing
+- Examples: Database queries, third-party API calls, file uploads, email sending, payment processing
+
+**Execution Flow**:
+
+1. Agent identifies need for server-side tool
+2. Tool request sent to backend Lambda
+3. Lambda executes tool with appropriate permissions
+4. Results streamed back to agent
+5. Agent processes results and sends guidance to client
+
+#### WebSocket Bridge
+
+The WebSocket connection serves as the communication bridge between client and server tools:
+
+- Agent streams tool prompts, intermediate statuses, and final results to the client
+- Client receives events and performs client-side tool actions when requested
+- Real-time coordination between client and server tool execution
+
+#### Typical Message Flow
+
+1. User action → HTTPS request to Agent API
+2. Agent plans tools; runs server-side tools and emits steps/results over WebSocket
+3. Client receives events → performs client-side tool actions if requested → updates UI
+4. Final guidance/result is shown to the user
 
 ### Environment Variables
 
